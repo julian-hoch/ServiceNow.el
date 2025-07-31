@@ -64,7 +64,7 @@
 (defcustom sn-oauth-redirect-port 38182
 "The port to use for the OAuth redirect URI.")
 
-(defvar sn--oauth-state "snrepl"
+(defvar sn--oauth-state "servicenow.el"
   "The state parameter for OAuth authentication.")
 
 (defvar sn--oauth-code-endpoint-template "https://%s.service-now.com/oauth_auth.do?response_type=code&client_id=%s&state=%s&redirect_uri=%s")
