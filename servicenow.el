@@ -160,7 +160,7 @@ type ('authorization_code' or 'refresh_token') and SECRET."
     (insert "Code received. You can now close this window.")
     (sn--oauth-get-token code))
   (let ((httpd-serve-files nil)
-        (httpd-port 8182))
+        (httpd-port sn-oauth-redirect-port))
     (httpd-start))
   (browse-url (sn--oauth-code-endpoint))
   (message "Login request initiated.  Please continue in your browser."))
