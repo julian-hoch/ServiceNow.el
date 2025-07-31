@@ -4,7 +4,7 @@
 ;; Maintainer: Julian Hoch
 ;; Version: 0.1.0
 ;; Package-Requires: (plz)
-;; Homepage: github.com/julianhoch/servicenow.el
+;; Homepage: https://github.com/julian-hoch/ServiceNow.el
 ;; Keywords: servicenow
 
 
@@ -61,8 +61,8 @@
   :type 'string
   :group 'servicenow)
 
-(defvar sn--oauth-redirect-uri "http://localhost:8182"
-  "The redirect URI for OAuth authentication.")
+(defcustom sn-oauth-redirect-port 38182
+"The port to use for the OAuth redirect URI.")
 
 (defvar sn--oauth-state "snrepl"
   "The state parameter for OAuth authentication.")
@@ -81,13 +81,17 @@
 (define-error 'snc-error "ServiceNow.el error")
 (define-error 'snc-not-logged-in-error "ServiceNow.el not logged in" 'snc-error)
 
+(defun sn--oauth-redirect-uri ()
+  "The redirect URI for OAuth authentication."
+  (format "http://localhost:%d" sn-oauth-redirect-port))
+
 (defun sn--oauth-code-endpoint ()
   "Construct the OAuth code endpoint URL."
   (format sn--oauth-code-endpoint-template
           sn-instance
           sn-oauth-client-id
           sn--oauth-state
-          sn--oauth-redirect-uri))
+          (sn--oauth-redirect-uri)))
 
 (defun sn--oauth-token-endpoint ()
   "Construct the OAuth token endpoint URL."
@@ -119,7 +123,7 @@ type ('authorization_code' or 'refresh_token') and SECRET."
                            ("client_id" . ,sn-oauth-client-id)
                            ("client_secret" . ,sn-oauth-client-secret)
                            (,secret-type . ,secret)
-                           ("redirect_uri" . ,sn--oauth-redirect-uri)))))
+                           ("redirect_uri" . ,(sn--oauth-redirect-uri))))))
          (alist (json-parse-string body :object-type 'alist))
          (access-token (alist-get 'access_token alist))
          (refresh-token (alist-get 'refresh_token alist)))
