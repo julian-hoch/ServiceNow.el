@@ -1,16 +1,16 @@
 
 # Table of Contents
 
-1.  [Quickstart](#orgb99ddd9)
-    1.  [OAuth Setup](#org8a26d35)
-2.  [Planned Improvements](#orgf8c49a2)
-    1.  [APIs to add](#org0c22cf2)
-3.  [Limitations](#orgc26b294)
+1.  [Quickstart](#orga9a63ce)
+    1.  [OAuth Setup](#org48e8bdd)
+2.  [Planned Improvements](#org681bf90)
+    1.  [APIs to add](#org17c6996)
+3.  [Limitations](#orgfb89ee9)
 
 This package is meant to serve as the plumbing for other packages that want to interact with ServiceNow.  It handles authentication with the instance via OAuth, making REST calls (for which it relies on the plz library), and provides a set of convenience functions to use the Table API.
 
 
-<a id="orgb99ddd9"></a>
+<a id="orga9a63ce"></a>
 
 # Quickstart
 
@@ -21,10 +21,11 @@ The simplest way to get started is with `use-package`.  Add the following to you
       :custom
       (sn-instance "dev12345")
       (sn-oauth-client-id "your-client-id")
-      (sn-oauth-client-secret "your-client-secret")))
+      (sn-oauth-client-secret "your-client-secret")
+      (sn-oauth-token-store 'custom)))
 
 
-<a id="org8a26d35"></a>
+<a id="org48e8bdd"></a>
 
 ## OAuth Setup
 
@@ -34,17 +35,18 @@ Set some client secret (or leave empty to get a generated one), and as redirect 
 
 Then, copy the Client ID and paste into your config.  After you installed the package, you can log in via the Emacs command `sn-oauth-login`.  Afterwards, test the connection with `sn-test`.
 
+**NOTE**: On Linux, you can set the variable `sn-oauth-token-store` probably to `'secrets`, which is more secure (it uses the `secrets.el` package).  On Windows, you will have to fall back to using `'custom`, which will store the token as part of your emacs customization.
 
-<a id="orgf8c49a2"></a>
+
+<a id="org681bf90"></a>
 
 # Planned Improvements
 
--   Right now the package uses `secrets.el` to store the tokens.  I am looking for a more generic option without external dependencies.
 -   True asynchronous processing.  Right now, everything is done synchronously.
 -   Better support for Application File tables.
 
 
-<a id="org0c22cf2"></a>
+<a id="org17c6996"></a>
 
 ## APIs to add
 
@@ -53,7 +55,7 @@ Then, copy the Client ID and paste into your config.  After you installed the pa
 -   **Code Search:** Allows you to search for code in the ServiceNow instance
 
 
-<a id="orgc26b294"></a>
+<a id="orgfb89ee9"></a>
 
 # Limitations
 

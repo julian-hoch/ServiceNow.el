@@ -73,10 +73,25 @@
   "https://%s.service-now.com/oauth_token.do")
 
 (defvar sn--oauth-access-token nil
-  "The OAuth access token for ServiceNow.  This is set after a successful login or token refresh.")
+  "The OAuth access token for ServiceNow.  This is set after a successful
+login or token refresh.  Only kept in memory, not persistent.")
 
 (defvar sn--oauth-refresh-token nil
-  "The OAuth refresh token for ServiceNow.  This is set after a successful login.")
+  "The OAuth refresh token for ServiceNow.  This is set after a successful
+login.  This variable is only kept in memory, not persistent.")
+
+(defcustom sn-oauth-token-store 'custom
+  "Defines how the OAuth refresh token is stored."
+  :type '(choice
+          (const :tag "Secrets Manager" secrets)
+          (const :tag "Custom Variable" custom))
+  :group 'servicenow)
+
+(defcustom sn-oauth-stored-refresh-token nil
+  "The stored OAuth refresh token, if `sn-oauth-token-store' is set to
+`custom'.  In that case, it will be persistent."
+  :type 'string
+  :group 'servicenow)
 
 (define-error 'snc-error "ServiceNow.el error")
 (define-error 'snc-not-logged-in-error "ServiceNow.el not logged in" 'snc-error)
@@ -129,27 +144,30 @@ type ('authorization_code' or 'refresh_token') and SECRET."
          (refresh-token (alist-get 'refresh_token alist)))
       (setq sn--oauth-access-token access-token)
       (setq sn--oauth-refresh-token refresh-token)
-      (sn--oauth-store-token "servicenow.el-access" access-token)
-      (sn--oauth-store-token "servicenow.el-refresh" refresh-token)
+      (sn--oauth-store-refresh-token refresh-token)
       (message "Token received.")))
 
-(defun sn--oauth-store-token (name value)
-  "Store the OAuth token in the secrets manager."
-  (secrets-delete-item "Login" name)
-  (secrets-create-item "Login" name value))
+(defun sn--oauth-store-refresh-token (token)
+  "Store the OAuth refresh TOKEN in the secrets manager."
+  (if (eq sn-oauth-token-store 'secrets)
+      (progn
+        (secrets-delete-item "Login" "servicenow.el-refresh")
+        (secrets-create-item "Login" "servicenow.el-refresh" token))
+    (customize-save-variable 'sn-oauth-stored-refresh-token token)))
 
-(defun sn--oauth-get-token-from-secrets (name)
-  "Retrieve the OAuth token from the secrets manager."
-  (secrets-get-secret "Login" name))
+(defun sn--oauth-get-refresh-token-from-store ()
+  "Retrieve the OAuth token from the secrets manager.  Also sets the token
+in memory."
+  (setq sn--oauth-refresh-token
+        (if (eq sn-oauth-token-store 'secrets)
+            (secrets-get-secret "Login" "servicenow.el-refresh")
+          sn-oauth-stored-refresh-token)))
 
 (defun sn--oauth-get-authorization-header ()
   "Get the Authorization header for OAuth requests."
-  (let ((access-token
-         (or sn--oauth-access-token
-             (sn--oauth-get-token-from-secrets "servicenow.el-access"))))
-    (if access-token
-        `("Authorization" . ,(format "Bearer %s" access-token))
-      (message "No access token found. Please log in first."))))
+    (if sn--oauth-access-token
+        `("Authorization" . ,(format "Bearer %s" sn--oauth-access-token))
+      (message "No access token found. Please log in first.")))
 
 ;;;###autoload
 (defun sn-oauth-login ()
