@@ -286,6 +286,11 @@ sure the user is authenticated and handle errors."
              (plz-error
               (setq sn--last-plz-error err)
               (cl-case (sn--get-plz-error-type err)
+                (http-400
+                 (message "Bad request (400), retrying (%d/%d)"
+                          retry-count sn--max-retries)
+                 (sleep-for 2)
+                 (recursive-call (1+ retry-count)))
                 (http-401
                  (message "Authentication error (401), refreshing token and retrying (%d/%d)"
                           retry-count sn--max-retries)
