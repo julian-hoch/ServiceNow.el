@@ -560,11 +560,12 @@ is a cons cell containing the retrieval time and the records themselves.")
 ;;;###autoload
 (defun sn-get-records-json-cached (table query &optional fields)
   "Retrieve records from the ServiceNow, caching the results for a period
-of time."
+of time.  If universal argument is supplied, do not use cache."
   ;; TODO To implement: Beyond that time, will only retrieve records that were changed since the last retrieval.
   (let* ((cache-key (snsync--make-hash-key table query fields))
         (cached-records (gethash cache-key sn--record-cache)))
-    (if (and cached-records
+    (if (and (not current-prefix-arg)
+             cached-records
              (time-less-p (time-subtract (current-time) (car cached-records))
                           (seconds-to-time sn-record-cache-ttl)))
         (cdr cached-records)
@@ -610,7 +611,7 @@ prompt to use for the completion buffer.
 Note: The results are cached for a period of time, so that repeated
 calls to this function will not result in multiple requests to the
 ServiceNow instance.  The cache is invalidated after
-`sn-record-cache-ttl' seconds."
+`sn-record-cache-ttl' seconds, or if PREFIX is provided."
   (let* ((fields (or fields '("sys_id")))
          (formatter (or formatter
                       (lambda (record)
