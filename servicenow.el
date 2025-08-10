@@ -95,6 +95,7 @@ login.  This variable is only kept in memory, not persistent.")
 
 (define-error 'snc-error "ServiceNow.el error")
 (define-error 'snc-not-logged-in-error "ServiceNow.el not logged in" 'snc-error)
+(define-error 'snc-no-access-token "No ServiceNow.el access token set." 'snc-error)
 
 (defun sn--oauth-redirect-uri ()
   "The redirect URI for OAuth authentication."
@@ -120,7 +121,7 @@ login.  This variable is only kept in memory, not persistent.")
 (defun sn--oauth-refresh-token ()
   "Refresh the OAuth access token using the refresh token."
   (if-let ((refresh-token (or sn--oauth-refresh-token
-                              (sn--oauth-get-token-from-secrets "servicenow.el-refresh"))))
+                              (sn--oauth-get-refresh-token-from-store))))
       (sn--oauth-retrieve-tokens "refresh_token" refresh-token)
     (message "No refresh token found. Please log in again.")))
 
@@ -165,9 +166,9 @@ in memory."
 
 (defun sn--oauth-get-authorization-header ()
   "Get the Authorization header for OAuth requests."
-    (if sn--oauth-access-token
-        `("Authorization" . ,(format "Bearer %s" sn--oauth-access-token))
-      (message "No access token found. Please log in first.")))
+  (unless sn--oauth-access-token
+    (signal 'snc-no-access-token nil))
+  `("Authorization" . ,(format "Bearer %s" sn--oauth-access-token)))
 
 ;;;###autoload
 (defun sn-oauth-login ()
@@ -280,6 +281,11 @@ sure the user is authenticated and handle errors."
              ;; Handle errors that might occur during the request.
              (snc-not-logged-in-error
               (message "Not logged in.  Trying to refresh token.")
+              (sn--oauth-refresh-token)
+              (sleep-for 2)
+              (recursive-call (1+ retry-count)))
+             (snc-no-access-token
+              (message "No access token set.  Trying to refresh.")
               (sn--oauth-refresh-token)
               (sleep-for 2)
               (recursive-call (1+ retry-count)))
@@ -518,8 +524,9 @@ specified)."
 
 ;;;###autoload
 (defun sn-update-record (table sys-id fields)
-  ;; TODO We should switch to patch at some point to be more in line with REST
-  ;; principles.  However, some older versions of plz do not support patch.
+  ;; NOTE: We should switch to use PATCH at some point instead of POST here, to
+  ;; be more in line with REST principles.  However, some older versions of plz
+  ;; do not support PATCH.
   "Update a record in the ServiceNow table TABLE with the specified SYS-ID
 and FIELDS (alist of field names and values).  Will return the updated
 record as hashtable."
@@ -561,7 +568,8 @@ is a cons cell containing the retrieval time and the records themselves.")
 (defun sn-get-records-json-cached (table query &optional fields)
   "Retrieve records from the ServiceNow, caching the results for a period
 of time.  If universal argument is supplied, do not use cache."
-  ;; TODO To implement: Beyond that time, will only retrieve records that were changed since the last retrieval.
+  ;; TODO To implement: Beyond that time, will only retrieve records that were
+  ;; changed since the last retrieval.
   (let* ((cache-key (snsync--make-hash-key table query fields))
         (cached-records (gethash cache-key sn--record-cache)))
     (if (and (not current-prefix-arg)
