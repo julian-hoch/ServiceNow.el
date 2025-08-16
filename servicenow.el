@@ -177,7 +177,9 @@ in memory."
   (defservlet* /: text/plain (code)
     (message "servicenow: received code %s" code)
     (insert "Code received. You can now close this window.")
+    ;; TODO kill httpd now?
     (sn--oauth-get-token code))
+
   (let ((httpd-serve-files nil)
         (httpd-port sn-oauth-redirect-port))
     (httpd-start))
@@ -264,19 +266,18 @@ sure the user is authenticated and handle errors."
          (if (>= retry-count sn--max-retries)
              (error "Failed to retrieve data from %s after %d retries" url sn--max-retries)
            (condition-case err
-               (progn
-                 (let* ((args (sn--inject-auth-headers args)) 
-                        (plz-response (apply 'plz method url
-                                             :as 'response
-                                             args))
-                        (status (plz-response-status plz-response))
-                        (resp-headers (plz-response-headers plz-response))
-                        (is-logged-in
-                         (string= (alist-get 'x-is-logged-in resp-headers) "true"))
-                        (body (plz-response-body plz-response)))
-                   (unless is-logged-in (signal 'snc-not-logged-in-error nil))
-                   ;; Return the (raw) response body.
-                   body))
+               (let* ((args (sn--inject-auth-headers args)) 
+                      (plz-response (apply 'plz method url
+                                           :as 'response
+                                           args))
+                      (status (plz-response-status plz-response))
+                      (resp-headers (plz-response-headers plz-response))
+                      (is-logged-in
+                       (string= (alist-get 'x-is-logged-in resp-headers) "true"))
+                      (body (plz-response-body plz-response)))
+                 (unless is-logged-in (signal 'snc-not-logged-in-error nil))
+                 ;; Return the (raw) response body.
+                 body)
 
              ;; Handle errors that might occur during the request.
              (snc-not-logged-in-error
