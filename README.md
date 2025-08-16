@@ -1,22 +1,11 @@
-- [Quickstart](#org170346c)
-      - [OAuth Setup](#org897670d)
-    - [Planned Improvements](#org6be48fa)
-      - [APIs to add](#org525a55d)
-    - [Limitations](#org12e3afd)
-
-
-# Table of Contents
-
-1.  [Quickstart](#org170346c)
-    1.  [OAuth Setup](#org897670d)
-2.  [Planned Improvements](#org6be48fa)
-    1.  [APIs to add](#org525a55d)
-3.  [Limitations](#org12e3afd)
+- [Quickstart](#org907f342)
+    - [Planned Improvements](#orga60cbbd)
+    - [Limitations](#org23701f0)
 
 This package is meant to serve as the plumbing for other packages that want to interact with ServiceNow. It handles authentication with the instance via OAuth, making REST calls (for which it relies on the plz library), and provides a set of convenience functions to use the Table API.
 
 
-<a id="org170346c"></a>
+<a id="org907f342"></a>
 
 # Quickstart
 
@@ -33,8 +22,6 @@ The simplest way to get started is with `use-package`. Add the following to your
 ```
 
 
-<a id="org897670d"></a>
-
 ## OAuth Setup
 
 To set up OAuth in your instance, go to "Application Registry", and create a new client record ("Create an OAuth API endpoint for external clients").
@@ -46,15 +33,13 @@ Then, copy the Client ID and paste into your config. After you installed the pac
 **NOTE**: On Linux, you can set the variable `sn-oauth-token-store` probably to `'secrets`, which is more secure (it uses the `secrets.el` package). On Windows, you will have to fall back to using `'custom`, which will store the token as part of your emacs customization.
 
 
-<a id="org6be48fa"></a>
+<a id="orga60cbbd"></a>
 
 # Planned Improvements
 
 -   True asynchronous processing. Right now, everything is done synchronously.
 -   Better support for Application File tables.
 
-
-<a id="org525a55d"></a>
 
 ## APIs to add
 
@@ -63,7 +48,7 @@ Then, copy the Client ID and paste into your config. After you installed the pac
 -   **Code Search:** Allows you to search for code in the ServiceNow instance
 
 
-<a id="org12e3afd"></a>
+<a id="org23701f0"></a>
 
 # Limitations
 
