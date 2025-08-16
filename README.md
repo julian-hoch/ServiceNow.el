@@ -1,15 +1,13 @@
 # Table of Contents
 
-1.  [Quickstart](#org9c6cf95)
-    1.  [OAuth Setup](#org8f34fa9)
-2.  [Planned Improvements](#org5086720)
-    1.  [APIs to add](#org8104c82)
-3.  [Limitations](#orgff87fe1)
+1.  [Quickstart](#org9322089)
+2.  [Planned Improvements](#org5b71799)
+3.  [Limitations](#org773727f)
 
 This package is meant to serve as the plumbing for other packages that want to interact with ServiceNow. It handles authentication with the instance via OAuth, making REST calls (for which it relies on the plz library), and provides a set of convenience functions to use the Table API.
 
 
-<a id="org9c6cf95"></a>
+<a id="org9322089"></a>
 
 # Quickstart
 
@@ -26,8 +24,6 @@ The simplest way to get started is with `use-package`. Add the following to your
 ```
 
 
-<a id="org8f34fa9"></a>
-
 ## OAuth Setup
 
 To set up OAuth in your instance, go to "Application Registry", and create a new client record ("Create an OAuth API endpoint for external clients").
@@ -39,15 +35,13 @@ Then, copy the Client ID and paste into your config. After you installed the pac
 **NOTE**: On Linux, you can set the variable `sn-oauth-token-store` probably to `'secrets`, which is more secure (it uses the `secrets.el` package). On Windows, you will have to fall back to using `'custom`, which will store the token as part of your emacs customization.
 
 
-<a id="org5086720"></a>
+<a id="org5b71799"></a>
 
 # Planned Improvements
 
 -   True asynchronous processing. Right now, everything is done synchronously.
 -   Better support for Application File tables.
 
-
-<a id="org8104c82"></a>
 
 ## APIs to add
 
@@ -56,7 +50,7 @@ Then, copy the Client ID and paste into your config. After you installed the pac
 -   **Code Search:** Allows you to search for code in the ServiceNow instance
 
 
-<a id="orgff87fe1"></a>
+<a id="org773727f"></a>
 
 # Limitations
 
