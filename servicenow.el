@@ -560,6 +560,13 @@ be reloaded from the ServiceNow instance."
 string identifying the table, query and retrieved fields, and the value
 is a cons cell containing the retrieval time and the records themselves.")
 
+;;;###autoload
+(defun snsync-clear-cache ()
+  "Clear up cache for ServiceNow data.  Will force to reload data for any
+cached requests."
+  (interactive)
+  (setq sn--record-cache (make-hash-table :test 'equal)))
+
 (defun snsync--make-hash-key (table &optional query fields)
   "Create a hash key from TABLE, QUERY and FIELDS."
   (let ((fields-str (mapconcat 'identity (sort fields) ",")))
