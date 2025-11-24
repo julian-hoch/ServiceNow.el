@@ -441,11 +441,12 @@ SYS-ID in XML format."
 (defvar sn--table-api-query-template "api/now/table/%s"
   "Template for constructing ServiceNow Table API URLs referencing records.")
 
-(defun sn--table-api-append-query-params (path &optional fields displayvalues reflinks query)
+(defun sn--table-api-append-query-params (path &optional fields displayvalues reflinks query limit)
   "Append common query parameters to the PATH.  If FIELDS are provided, the
 parameter `sysparm_fields' is added. If DISPLAYVALUES is set,
 `sysparm_display_value' is set.  If REFLINKS is set,
-`sysparm_exclude_reference_link' is *not* set."
+`sysparm_exclude_reference_link' is *not* set.
+If LIMIT is provided, `sysparm_limit' is set."
   (let ((params nil))
     (when fields (push
                   (list 'sysparm_fields (string-join fields ","))
@@ -459,6 +460,9 @@ parameter `sysparm_fields' is added. If DISPLAYVALUES is set,
     (unless reflinks (push
                       '(sysparm_exclude_reference_link true)
                       params))
+    (when limit (push
+                 (list 'sysparm_limit (number-to-string limit))
+                    params))
     (sn--path-append-params path params)))
 
 (defun sn--table-api-record-path (table sys-id &optional fields displayvalues reflinks)
@@ -471,15 +475,19 @@ REFLINKS is set, `sysparm_exclude_reference_link' is *not* set."
     (sn--table-api-append-query-params
      base-path fields displayvalues reflinks)))
 
-(defun sn--table-api-query-path (table query &optional fields displayvalues reflinks)
+(defun sn--table-api-query-path (table query &optional fields displayvalues reflinks limit)
   "Construct the ServiceNow Table API endpoint URL for a query in TABLE
 with encoded query QUERY.  If no FIELDS are provided, all fields are
-retrieved."
+retrieved.  If DISPLAYVALUES is set, `sysparm_display_value' is set.  If
+REFLINKS is set, `sysparm_exclude_reference_link' is *not* set.  If LIMIT
+is provided, `sysparm_limit' is set."
   (let ((base-path (format sn--table-api-query-template table)))
     (sn--table-api-append-query-params
-     base-path fields displayvalues reflinks query)))
+     base-path fields displayvalues reflinks query limit)))
 
 ;;;; Getting Records
+
+;;;;; Single Record
 
 ;;;###autoload
 (defun sn-get-record-json (table sys-id &optional fields displayvalues reflinks)
@@ -493,19 +501,51 @@ records.  Data is returned as hash table."
     (gethash "result" response)))
 
 ;;;###autoload
+(defun sn-get-record-query-json (table query &optional fields)
+  "Retrieve a record from the ServiceNow table TABLE that matches the QUERY.
+If multiple records match, only the first one is returned.  Will load
+all given FIELDS or all fields if FIELDS is nil."
+  (let ((records (sn-get-records-json table query fields 1)))
+    (if (> (length records) 0 )
+        (elt records 0)
+      nil)))
+
+;;;###autoload
 (defun sn-get-field-json (table sys-id field)
   "Retrieve a record from the ServiceNow table TABLE with the specified
 SYS-ID.  Will return only a single given FIELD."
   (gethash field
              (sn-get-record-json table sys-id `(,field))))
 
+
 ;;;###autoload
-(defun sn-get-records-json (table query &optional fields)
+(defun sn-get-query-field-json (table query field)
+  "Retrieve a record from the ServiceNow table TABLE that matches the QUERY.  Will
+return only a single given FIELD.  If multiple records match, only the first one
+is returned."
+  (let ((result (sn-get-record-query-json table query `(,field))))
+    (when result
+      (gethash field result))))
+
+;;;;; Multiple Records
+
+;;;###autoload
+(defun sn-get-records-json (table query &optional fields limit)
   "Retrieve records from the ServiceNow table TABLE that match the QUERY.
 Will load all given FIELDS or all fields if FIELDS is nil."
-  (let* ((path (sn--table-api-query-path table query fields))
+  (let* ((path (sn--table-api-query-path table query fields nil nil limit))
          (response (sn-get-sync-json path)))
     (gethash "result" response)))
+
+;;;###autoload
+(defun sn-get-records-field-json (table query field &optional limit)
+  "Retrieve records from the ServiceNow table TABLE that match the QUERY.
+Will return only a single given FIELD for each record."
+  (let* ((records (sn-get-records-json table query `(,field))))
+    (mapcar (lambda (record)
+              (gethash field record))
+            records)))
+
 
 ;;;; Creating Records
 
@@ -536,6 +576,23 @@ record as hashtable."
          (response (sn-put-sync-json path body))
          (result (gethash "result" response)))
   result))
+
+;;;; Create-or-Update Records
+
+;;;###autoload
+(defun sn-create-or-update-record (table query init-fields update-fields)
+  "Create or update a record in the ServiceNow table TABLE.  If a record
+matching QUERY exists, it will be updated with UPDATE-FIELDS (alist of
+field names and values).  If no such record exists, a new record will be
+created with INIT-FIELDS (alist of field names and values) as well as
+UPDATE-FIELDS."
+  (let ((existing-record (sn-get-record-query-json table query)))
+    (if existing-record
+        (sn-update-record table
+                          (gethash "sys_id" existing-record)
+                          update-fields)
+      (sn-create-record table
+                        (append init-fields update-fields)))))
 
 ;;;; Deleting Records
 
@@ -611,6 +668,57 @@ will return nil."
              field))
    ((functionp field) (funcall field data))
    (t (error "Invalid field type: %s" (type-of field)))))
+
+;;; User Functions
+
+(defvar sn--user-id nil
+  "The user's sys_id.  Only needed for some API calls.")
+
+;;;###autoload
+(defun sn-get-current-user-id ()
+  "Get the current user's sys_id from the ServiceNow instance."
+  (unless sn--user-id
+    (setq sn--user-id
+          (sn-get-query-field-json "sys_user"
+                                   "user_name=javascript:gs.getUserName()"
+                                   "sys_id")))
+  sn--user-id)
+
+;;;###autoload
+(defun sn-get-user-preference (preference user)
+  "Get the USER's preference PREFERENCE from the ServiceNow instance."
+  (sn-get-query-field-json "sys_user_preference"
+                         (format "name=%s^user=%s" preference user)
+                         "value"))
+
+;;;###autoload
+(defun sn-get-current-user-preference (preference)
+  "Get the current user's preference PREFERENCE from the ServiceNow instance."
+  (sn-get-user-preference preference (sn-get-current-user-id)))
+
+;;;###autoload
+(defun sn-set-user-preference (preference user value)
+  "Set the USER's preference PREFERENCE to VALUE in the ServiceNow instance.
+If the preference does not exist, it will be created."
+  (let ((init-fields (list (cons "name" preference)
+                          (cons "user" user)))
+        (query (format "name=%s^user=%s" preference user))
+        (update-fields (list (cons "value" value))))
+    (sn-create-or-update-record
+     "sys_user_preference"
+     query
+     init-fields
+     update-fields)))
+
+;;;###autoload
+(defun sn-set-current-user-preference (preference value)
+  "Set the current user's preference PREFERENCE to VALUE in the
+ServiceNow instance.  If the preference does not exist, it will be
+created."
+  (sn-set-user-preference
+   preference
+   (sn-get-current-user-id)
+   value))
 
 ;;; User Interface
 
